@@ -1,0 +1,114 @@
+#!/bin/bash
+
+# 비디오 리스트 초기화
+videos=("Amadeus" "Avengers Forever" "Back to the Future" "Batman Returns" "Candy Candy" "Ghost Busters" "Star Wars" "Superman Returns" "Time Machine")
+# 대여된 비디오와 사용자 정보를 저장할 파일
+rented_videos_file="rented_videos.txt"
+accounts_file="accounts.txt"
+
+# 계정 생성 함수
+create_account() {
+    echo "[1] Create Account"
+    echo "Enter Customer Info:"
+    read -p "Name: " name
+    read -p "Phone Number: " phone
+    echo "$name:$phone" >> $accounts_file
+    echo "Account created for $name"
+
+    read -p "Press Enter"
+}
+
+# 계정 조회 함수
+query_account() {
+    echo "[2] Query Account"
+    read -p "Enter Name: " name
+    echo "Videos Rented"
+    echo "=================================="
+    local count=1
+    grep "$name" $rented_videos_file | while read -r line; do
+        local video_name=$(echo $line | cut -d':' -f2)
+        local date=$(echo $line | cut -d':' -f3)
+        echo "$count. $video_name $date"
+        ((count++))
+    done
+    echo "=================================="
+
+    read -p "Press Enter"
+}
+
+
+# 비디오 대여 함수
+rent_video() {
+    echo "[3] Rent Video"
+    read -p "Enter Name: " name
+    echo "Videos Available"
+    echo "=================================="
+    for i in "${!videos[@]}"; do
+        if ! grep -q "${videos[$i]}" $rented_videos_file; then
+            echo "$(($i + 1)). ${videos[$i]}"
+        fi
+    done
+    echo "=================================="
+    read -p "Please Select Number: " number
+    selected_video=${videos[$((number - 1))]}
+    echo "$selected_video is rented now."
+    echo "$name:$selected_video:$(date +'%m/%d')" >> $rented_videos_file
+
+    read -p "Press Enter"
+}
+
+# 비디오 반환 함수
+return_video() {
+    echo "[4] Return Video"
+    read -p "Enter Name: " name
+    echo "Videos Rented"
+    echo "=================================="
+    local count=1
+    grep "$name" $rented_videos_file | while read -r line; do
+        local video_name=$(echo $line | cut -d':' -f2)
+        local date=$(echo $line | cut -d':' -f3)
+        echo "$count. $video_name $date"
+        ((count++))
+    done
+    echo "=================================="
+    read -p "Please Select Number: " number
+    local selected_line=$(grep "$name" $rented_videos_file | sed -n ${number}p)
+    selected_video=$(echo $selected_line | cut -d':' -f2)
+    
+    awk -v name="$name" -v video="$selected_video" -F: '$1 != name || $2 != video' $rented_videos_file > temp_file && mv temp_file $rented_videos_file
+    
+    echo "$selected_video is returned."
+
+    read -p "Press Enter"
+}
+
+# 메인 메뉴 함수
+main_menu() {
+    echo "[VMS]"
+    echo "Please Select:"
+    echo "1. Create Account"
+    echo "2. Query Account"
+    echo "3. Rent Video"
+    echo "4. Return Video"
+    echo "0. Quit"
+    read -p "Selection: " selection
+
+    case $selection in
+        1) create_account ;;
+        2) query_account ;;
+        3) rent_video ;;
+        4) return_video ;;
+        0) exit 0 ;;
+        *) echo "Invalid selection. Please try again." ;;
+    esac
+}
+
+# 파일 초기화
+touch $rented_videos_file
+touch $accounts_file
+
+# 메인 루프
+while true; do
+    main_menu
+done
+
